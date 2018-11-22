@@ -86,7 +86,7 @@ def tick(frameNum, pts, beak, boids):
     return pts, beak
 def main():
     print("starting boids")
-    N = 100
+    N = 3
     boids = Boids(N)
     fig = plt.figure()
     ax = plt.axes(xlim=(0, width), ylim=(0, height))
