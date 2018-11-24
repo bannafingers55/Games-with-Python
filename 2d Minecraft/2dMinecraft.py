@@ -30,6 +30,8 @@ CLOUD = 8
 ZOMBIE = 9
 HEART = 10
 FOOD = 11
+FIRE = 12
+FIREBOOTS = 13
 
 #Setting up the player
 PLAYER = pygame.image.load('sprites/player.png')
@@ -37,6 +39,8 @@ playerPos = [0, 0]
 playerHealth = 5
 playerFood = 10
 amountOfFood = 0
+canBurn = True
+
 #Colour to resource dictionary
 textures = {
             DIRT:  pygame.image.load('sprites/dirt.png'),
@@ -48,9 +52,11 @@ textures = {
             STONE: pygame.image.load('sprites/stone.png'),
             DIAMOND: pygame.image.load('sprites/diamond.png'),
             CLOUD: pygame.image.load('sprites/cloud.png'),
-            ZOMBIE:pygame.image.load('sprites/zombie.png'),
-            HEART:pygame.image.load('sprites/heart.png'),
-            FOOD:pygame.image.load('sprites/food.png')
+            ZOMBIE: pygame.image.load('sprites/zombie.png'),
+            HEART: pygame.image.load('sprites/heart.png'),
+            FOOD: pygame.image.load('sprites/food.png'),
+            FIRE: pygame.image.load('sprites/fire.png'),
+            FIREBOOTS: pygame.image.load('sprites/fireshoes.png')
 }
 
 #Defining the inventory
@@ -62,7 +68,9 @@ inventory = {
             STONE :   0,
             DIAMOND : 0,
             WOOD :    0,
-            LAVA :    0
+            LAVA :    0,
+            FOOD: 0,
+            FIREBOOTS: 0
 }
 
 #Inventory constants
@@ -75,7 +83,8 @@ controls = {
             WOOD: 54,
             STONE: 55,
             DIAMOND: 56,
-            FOOD: 57
+            FOOD: 57,
+            FIREBOOTS: 48
 }
 #Crafting rules
 craft = {
@@ -84,8 +93,12 @@ craft = {
         DIAMOND : {DIRT: 100},
         COAL : {STONE : 2, LAVA: 2},
         WOOD: {LAVA : 2, STONE:2},
-        FOOD: {GRASS : 5, DIRT: 5}
+        FOOD: {GRASS : 5, DIRT: 5},
+        FIREBOOTS: {DIAMOND: 10}
 }
+tools = {
+    FOOD: {GRASS : 5, DIRT: 5}
+    }
 #Game Dims
 #DEFAULT TILE SIZE = 40
 TITLESIZE = 40
@@ -164,12 +177,21 @@ while True:
                             inventory[key] -= 1
                             inventory[currentTile] += 1
                             tilemap[playerPos[1]][playerPos[0]] = key
+            if event.key == K_f:
+                #print("Eating food")
+                playerFood += 1
+                if playerFood > 12:
+                    playerFood = 11
+                inventory[FOOD] -= 1
     for row in range(MAPHEIGHT):
         for column in range(MAPWIDTH):
             DISPLAYSURF.blit(textures[tilemap[row][column]], (column*TITLESIZE, row*TITLESIZE))
     DISPLAYSURF.blit(PLAYER, (playerPos[0] * TITLESIZE, playerPos[1] * TITLESIZE))
     hpos = 0
     placePosition = 10
+    if inventory[FIREBOOTS] >= 1:
+        print("Immune to fire")
+        canBurn = False
     for item in resources:
         DISPLAYSURF.blit(textures[item], (placePosition, MAPHEIGHT * TITLESIZE + 20))
         placePosition += 30
@@ -178,7 +200,7 @@ while True:
         placePosition += 50
         hpos = placePosition
     DISPLAYSURF.blit(textures[FOOD], (hpos, MAPHEIGHT * TITLESIZE + 20))
-    textObj = INVFONT.render(str(amountOfFood), True, WHITE, BLACK)
+    textObj = INVFONT.render(str(inventory[FOOD]), True, WHITE, BLACK)
     DISPLAYSURF.blit(textObj, (hpos, MAPHEIGHT * TITLESIZE + 20))
     hpos += 50
     fpos = hpos
@@ -188,7 +210,10 @@ while True:
     for i in range(0, playerHealth):
         DISPLAYSURF.blit(textures[HEART], (hpos, MAPHEIGHT * TITLESIZE+ 20))
         hpos += 20
-                    
+    DISPLAYSURF.blit(textures[FIREBOOTS], (hpos + 110, MAPHEIGHT  * TITLESIZE + 30))
+    textObj = INVFONT.render(str(inventory[FIREBOOTS]), True, WHITE, BLACK)
+    DISPLAYSURF.blit(textObj, (hpos + 120, MAPHEIGHT  * TITLESIZE + 40))
+    hpos += 20
     DISPLAYSURF.blit(textures[CLOUD].convert_alpha(), (cloudx, cloudy))
 
     cloudx += 1
@@ -197,7 +222,7 @@ while True:
         cloudx = -200
     cloudx2 = cloudx - 200
     cloudy2 = cloudy - 200
-    zombiePos = [playerPos[0] - ZOMBIE_DIST, playerPos[1] - ZOMBIE_DIST]
+    zombiePos = [playerPos[1] - ZOMBIE_DIST, playerPos[0] - ZOMBIE_DIST]
     DISPLAYSURF.blit(textures[CLOUD].convert_alpha(), (cloudx2, cloudy2))
     DISPLAYSURF.blit(textures[ZOMBIE], ((playerPos[0] - ZOMBIE_DIST) * TITLESIZE, (playerPos[1] - ZOMBIE_DIST) * TITLESIZE))
     try:
@@ -207,25 +232,40 @@ while True:
     #print(resources[zombieBlock])
     #print(zombieBlock)
     currentTile = tilemap[playerPos[1]][playerPos[0]]
-    print(currentTile)
+    if currentTile == LAVA and canBurn:
+        #print("Lava")
+        DISPLAYSURF.blit(textures[FIRE], (playerPos[0] * TITLESIZE, playerPos[1] * TITLESIZE))
+        chance = random.randint(1, 10)
+        if chance == 10:
+            playerHealth -= 1
+    #print(currentTile)
     if zombieBlock == 4:
         #print(resources[zombieBlock])
         #print("LAVA")
         ZOMBIE_DIST = 5
         zombieNotDead = False
-        
-    if zombiePos[0] == playerPos[0] and zombiePos[1] == playerPos[1]:
+
+    if ZOMBIE_DIST == 0:
         ZOMBIE_DIST = 5
         playerHealth -= 1
-        
-    if playerHealth == 0 or playerFood == 0:
+        print("DEAD")
+
+    if playerHealth == 0:
         pygame.quit()
         sys.exit()
+    if playerFood == 0:
+        playerHealth -= 1
+        playerFood = 0
     chance = random.randint(0, 100)
     if chance == 5:
         ZOMBIE_DIST -= 1
+        print("Zombie moving forward")
     hungerLoss = random.randint(1, 100)
     if hungerLoss == 100:
         playerFood -= 1
+    chance = random.randint(1, 100000)
+    if chance == 1000:
+        inventory[FIREBOOTS] += 1
+        print("Gift from God")
     pygame.display.update()
     fpsClock.tick(24)
